@@ -1,0 +1,33 @@
+{
+  "name": "comparo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "data": "python ../ePYcerie-main/.venv/Scripts/python.exe scripts/build_catalog.py && npx --yes vite-node scripts/emit-preview.ts",
+    "gate": "npx --yes vite-node scripts/emit-preview.ts",
+    "saq": "python ../ePYcerie-main/.venv/Scripts/python.exe scripts/fetch_saq.py",
+    "essence": "python scripts/fetch_essence.py",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "html5-qrcode": "^2.3.8",
+    "jspdf": "^2.5.2",
+    "leaflet": "^1.9.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.11",
+    "@types/leaflet": "^1.9.22",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.5",
+    "vitest": "^5.1.0"
+  }
+}

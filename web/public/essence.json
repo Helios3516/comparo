@@ -1,0 +1,243 @@
+{
+  "citySlug": "baie-comeau",
+  "city": "Baie-Comeau",
+  "region": {
+    "slug": "cote-nord",
+    "fr": "Côte-Nord",
+    "en": "North Shore"
+  },
+  "stationCount": 14,
+  "updatedAt": "2026-11-11T13:37:11.151Z",
+  "unit": "¢/L",
+  "currency": "CAD",
+  "prices": {
+    "regular": {
+      "cheapest": 178.9,
+      "average": 179.8,
+      "stationCount": 14
+    },
+    "premium": {
+      "cheapest": 203.9,
+      "average": 206.2,
+      "stationCount": 14
+    },
+    "diesel": {
+      "cheapest": 279.9,
+      "average": 279.9,
+      "stationCount": 10
+    }
+  },
+  "typicalGapRegular": 0,
+  "stations": [
+    {
+      "stationId": "rq2-f408e26cc2c0",
+      "name": "Irving Oil",
+      "brand": "Irving",
+      "address": "2929 Bd Laflèche, Baie-Comeau",
+      "lat": 49.19203,
+      "lng": -68.302023,
+      "prixOrdinaire": 178.9,
+      "prixSuper": 205.9,
+      "prixDiesel": 279.9,
+      "updatedAt": "2026-11-11T13:01:03.741Z",
+      "stale": false
+    },
+    {
+      "stationId": "rq2-08bd8a09f4c7",
+      "name": "Petro-Canada",
+      "brand": "Petro-Canada",
+      "address": "1200 Boulevard René-Bélanger, Baie-Comeau",
+      "lat": 49.195282,
+      "lng": -68.274682,
+      "prixOrdinaire": 178.9,
+      "prixSuper": 203.9,
+      "prixDiesel": 279.9,
+      "updatedAt": "2026-11-11T13:37:03.921Z",
+      "stale": false
+    },
+    {
+      "stationId": "rq2-20347e729e09",
+      "name": "Ultramar - Station Service",
+      "brand": "Ultramar",
+      "address": "900 Rue Bossé, Baie-Comeau",
+      "lat": 49.192972,
+      "lng": -68.259538,
+      "prixOrdinaire": 178.9,
+      "prixSuper": 205.9,
+      "prixDiesel": 279.9,
+      "updatedAt": "2026-11-11T12:31:03.727Z",
+      "stale": false
+    },
+    {
+      "stationId": "rq2-d52e78ab8d90",
+      "name": "Ultramar - Station Service",
+      "brand": "Ultramar",
+      "address": "680 Boulevard Laflèche, Baie-Comeau",
+      "lat": 49.199962,
+      "lng": -68.257752,
+      "prixOrdinaire": 178.9,
+      "prixSuper": 205.9,
+      "prixDiesel": null,
+      "updatedAt": "2026-11-10T22:31:04.173Z",
+      "stale": false
+    },
+    {
+      "stationId": "rq2-22771f5cbec3",
+      "name": "Essence+ de Canadian Tire",
+      "brand": "Canadian Tire",
+      "address": "700 Bd Laflèche, Baie-Comeau",
+      "lat": 49.199297,
+      "lng": -68.258105,
+      "prixOrdinaire": 178.9,
+      "prixSuper": 203.9,
+      "prixDiesel": 279.9,
+      "updatedAt": "2026-11-11T11:36:03.942Z",
+      "stale": false
+    },
+    {
+      "stationId": "rq2-218500cbc742",
+      "name": "Shell",
+      "brand": "Shell",
+      "address": "1065 Boulevard Laflèche, Baie-Comeau",
+      "lat": 49.196659,
+      "lng": -68.263739,
+      "prixOrdinaire": 179,
+      "prixSuper": 207.9,
+      "prixDiesel": null,
+      "updatedAt": "2026-11-10T21:46:04.171Z",
+      "stale": false
+    },
+    {
+      "stationId": "rq2-50355cfa8508",
+      "name": "Irving Oil",
+      "brand": "Irving",
+      "address": "193 Bd la Salle, Baie-Comeau",
+      "lat": 49.217711,
+      "lng": -68.166252,
+      "prixOrdinaire": 179.4,
+      "prixSuper": 206.9,
+      "prixDiesel": 279.9,
+      "updatedAt": "2026-11-11T11:41:03.740Z",
+      "stale": false
+    },
+    {
+      "stationId": "rq2-a2ebcc4ad60f",
+      "name": "Esso",
+      "brand": "Esso",
+      "address": "344 Boulevard la Salle, Baie-Comeau",
+      "lat": 49.214178,
+      "lng": -68.195155,
+      "prixOrdinaire": 179.4,
+      "prixSuper": 205.9,
+      "prixDiesel": null,
+      "updatedAt": "2026-11-10T22:06:03.876Z",
+      "stale": false
+    },
+    {
+      "stationId": "rq2-19ae70d130f6",
+      "name": "Petro-Canada",
+      "brand": "Petro-Canada",
+      "address": "6 Avenue le Gardeur, Baie-Comeau",
+      "lat": 49.243221,
+      "lng": -68.149399,
+      "prixOrdinaire": 179.4,
+      "prixSuper": 204.4,
+      "prixDiesel": 279.9,
+      "updatedAt": "2026-11-10T22:46:04.186Z",
+      "stale": false
+    },
+    {
+      "stationId": "rq2-b1b0c08db519",
+      "name": "Shell",
+      "brand": "Shell",
+      "address": "337 Boulevard la Salle, Baie-Comeau",
+      "lat": 49.21512,
+      "lng": -68.194028,
+      "prixOrdinaire": 179.4,
+      "prixSuper": 204.4,
+      "prixDiesel": 279.9,
+      "updatedAt": "2026-11-11T09:11:03.633Z",
+      "stale": false
+    },
+    {
+      "stationId": "rq2-e448cf4b35fe",
+      "name": "Petro-Canada",
+      "brand": "Petro-Canada",
+      "address": "260 Boulevard la Salle, Baie-Comeau",
+      "lat": 49.212497,
+      "lng": -68.178385,
+      "prixOrdinaire": 179.4,
+      "prixSuper": 204.4,
+      "prixDiesel": 279.9,
+      "updatedAt": "2026-11-10T22:46:04.186Z",
+      "stale": false
+    },
+    {
+      "stationId": "rq2-267bc3addeab",
+      "name": "Ultramar - Station Service",
+      "brand": "Ultramar",
+      "address": "232 Boulevard la Salle, Baie-Comeau",
+      "lat": 49.214559,
+      "lng": -68.173348,
+      "prixOrdinaire": 179.4,
+      "prixSuper": 206.9,
+      "prixDiesel": null,
+      "updatedAt": "2026-11-11T00:42:03.984Z",
+      "stale": false
+    },
+    {
+      "stationId": "rq2-ac287e31cf8b",
+      "name": "Irving Oil",
+      "brand": "Irving",
+      "address": "104 Boulevard Comeau, Baie-Comeau",
+      "lat": 49.225782,
+      "lng": -68.19161,
+      "prixOrdinaire": 179.9,
+      "prixSuper": 204.9,
+      "prixDiesel": 279.9,
+      "updatedAt": "2026-11-11T12:57:03.722Z",
+      "stale": false
+    },
+    {
+      "stationId": "rq2-4a426b6df393",
+      "name": "Axco",
+      "brand": "Axco",
+      "address": "Baie-Comeau",
+      "lat": 49.21296,
+      "lng": -68.1943,
+      "prixOrdinaire": 187.4,
+      "prixSuper": 215.4,
+      "prixDiesel": 279.9,
+      "updatedAt": "2026-11-06T02:26:04.169Z",
+      "stale": false
+    }
+  ],
+  "links": {
+    "page": {
+      "fr": "https://www.gasquebec.ca/villes/baie-comeau",
+      "en": "https://www.gasquebec.ca/en/cities/baie-comeau"
+    },
+    "fairPrice": "https://www.gasquebec.ca/api/fair-price?citySlug=baie-comeau"
+  },
+  "meta": {
+    "source": "Gas Québec",
+    "dataSource": {
+      "name": "Régie essence Québec",
+      "publisher": "Régie de l'énergie du Québec",
+      "url": "https://regieessencequebec.ca/"
+    },
+    "attribution": {
+      "url": "https://www.gasquebec.ca/villes/baie-comeau",
+      "text": {
+        "fr": "Prix : Régie de l'énergie du Québec, via Gas Québec",
+        "en": "Prices: Régie de l'énergie du Québec, via Gas Quebec"
+      },
+      "html": {
+        "fr": "Prix : Régie de l'énergie du Québec, via <a href=\"https://www.gasquebec.ca/villes/baie-comeau\">Gas Québec</a>",
+        "en": "Prices: Régie de l'énergie du Québec, via <a href=\"https://www.gasquebec.ca/villes/baie-comeau\">Gas Quebec</a>"
+      }
+    },
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "staleAfterDays": 7
+  }
+}
