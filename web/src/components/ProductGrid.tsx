@@ -24,7 +24,7 @@ export function ProductGrid({ products, page, pageSize, onPage, qtyOf, liked, pa
 
   if (products.length === 0) {
     return (
-      <div className="rounded-3xl border border-dashed border-line px-6 py-16 text-center">
+      <div data-tour="prix" className="rounded-3xl border border-dashed border-line px-6 py-16 text-center">
         <p className="font-serif text-2xl">Aucun produit par ici</p>
         <p className="mt-2 text-sm text-muted">{hint ?? "Essayez un autre mot, une autre catégorie, ou un autre magasin."}</p>
       </div>
@@ -38,6 +38,7 @@ export function ProductGrid({ products, page, pageSize, onPage, qtyOf, liked, pa
           <ProductCard
             key={product.id}
             product={product}
+            anchor={index === 0 ? "prix" : undefined}
             index={index}
             qty={qtyOf(product.id)}
             liked={liked?.(product.id)}

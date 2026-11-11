@@ -46,7 +46,7 @@ export function SearchBox({ records, both, query, onQuery, onPick, placeholder =
       <label className="sr-only" htmlFor="recherche">
         Rechercher un produit
       </label>
-      <div className="flex items-center gap-2 rounded-full border border-line bg-card px-4 py-2.5 shadow-[var(--shadow)]">
+      <div data-tour="recherche" className="flex items-center gap-2 rounded-full border border-line bg-card px-4 py-2.5 shadow-[var(--shadow)]">
         <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-muted" aria-hidden="true">
           <circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
           <path d="M12.5 12.5 17 17" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />

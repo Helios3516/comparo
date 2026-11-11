@@ -69,12 +69,13 @@ export function Filters(props: Props) {
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
         <button
           type="button"
           aria-pressed={props.both}
           onClick={props.onBoth}
           title="N’afficher que les articles vendus au Maxi et à l’IGA"
-          className={`rounded-full border px-3 py-2 text-sm font-medium transition ${props.both ? "border-pine bg-moss text-ink" : "border-line bg-card text-ink"}`}
+          className={`shrink-0 rounded-full border px-3 py-2 text-sm font-medium transition ${props.both ? "border-pine bg-moss text-ink" : "border-line bg-card text-ink"}`}
         >
           Les deux magasins{props.both ? " · activé" : ""}
         </button>
@@ -87,13 +88,14 @@ export function Filters(props: Props) {
                 type="button"
                 aria-pressed={active}
                 onClick={() => props.onStore(chip.id)}
-                className={`rounded-full px-3 py-1.5 text-sm transition ${active ? "bg-moss text-ink" : "text-muted hover:text-ink"}`}
+                className={`shrink-0 rounded-full border px-3 py-2 text-sm transition ${active ? "border-pine bg-moss text-ink" : "border-line bg-card text-ink hover:border-pine"}`}
               >
                 {chip.label}
               </button>
             );
           })}
-        <div className="ml-auto flex items-center gap-3">
+        </div>
+        <div className="flex w-full items-center gap-3 md:ml-auto md:w-auto">
           <p className="text-sm text-muted">{props.total.toLocaleString("fr-CA")} produits</p>
           <label htmlFor="tri" className="text-sm text-muted">
             Trier

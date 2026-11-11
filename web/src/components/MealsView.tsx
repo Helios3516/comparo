@@ -12,7 +12,6 @@ import {
   reviseWeek,
   withEaters,
   type Avoid,
-  type Budget,
   type Diet,
   type DishVerdict,
   type Habits,
@@ -43,12 +42,6 @@ const DIETS: { id: Diet; label: string; text: string }[] = [
   { id: "peu", label: "Peu de viande", text: "Surtout poisson et légumes" },
   { id: "poisson", label: "Poisson", text: "Pas de viande" },
   { id: "vege", label: "Végétarien", text: "Œufs et légumes" },
-];
-
-const BUDGETS: { id: Budget; label: string }[] = [
-  { id: "serre", label: "Serré" },
-  { id: "habituel", label: "Habituel" },
-  { id: "large", label: "Plus large" },
 ];
 
 const AVOIDS: { id: Avoid; label: string }[] = [
@@ -145,7 +138,7 @@ export function MealsView({ habits, notebook, products, onSave, onNotebook, onAd
 
   return (
     <div className="space-y-10">
-      <section className="max-w-3xl">
+      <section data-tour="repas" className="max-w-3xl">
         <p className="text-sm text-pine">La maison · les repas · l’économie</p>
         <h1 className="mt-1 font-serif text-4xl tracking-tight">La semaine, et où chaque ingrédient coûte moins cher.</h1>
         <p className="mt-3 max-w-2xl text-muted">
@@ -249,17 +242,6 @@ export function MealsView({ habits, notebook, products, onSave, onNotebook, onAd
                   <span className="block text-sm font-medium">{diet.label}</span>
                   <span className="mt-1 block text-xs text-muted">{diet.text}</span>
                 </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <fieldset>
-            <legend className="text-sm font-medium">Budget vin</legend>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {BUDGETS.map((budget) => (
-                <Choice key={budget.id} pressed={draft.budget === budget.id} onClick={() => setDraft((current) => ({ ...current, budget: budget.id }))}>
-                  {budget.label}
-                </Choice>
               ))}
             </div>
           </fieldset>

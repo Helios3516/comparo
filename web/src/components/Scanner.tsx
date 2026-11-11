@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import { BarcodeFormat, BrowserMultiFormatOneDReader } from "@zxing/browser";
+import { DecodeHintType } from "@zxing/library";
 import { buildBarcodeIndex, findByBarcode } from "../lib/barcode";
 import { advantage, money } from "../lib/format";
 import type { Review } from "../lib/reviews";
@@ -12,12 +13,97 @@ type Props = {
   onAdd: (id: string) => void;
   onQty: (id: string, qty: number) => void;
   onClose: () => void;
+  onFound?: (product: Product) => void;
   kind?: "grocery" | "saq";
   author?: string;
   reviewsOf?: (sku: string) => Review[];
   averageOf?: (sku: string) => { average: number; count: number } | null;
   onPublish?: (sku: string, author: string, stars: number, text: string) => Promise<string>;
 };
+
+type Detected = { rawValue?: string };
+type NativeDetector = { detect: (source: CanvasImageSource) => Promise<Detected[]> };
+
+function nativeDetector(): NativeDetector | null {
+  const ctor = (window as unknown as { BarcodeDetector?: new (options: { formats: string[] }) => NativeDetector }).BarcodeDetector;
+  if (!ctor) return null;
+  try {
+    return new ctor({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128"] });
+  } catch {
+    return null;
+  }
+}
+
+function within<T>(promise: Promise<T>, ms: number) {
+  return Promise.race([
+    promise.then((value) => value).catch(() => null),
+    new Promise<null>((resolve) => window.setTimeout(() => resolve(null), ms)),
+  ]);
+}
+
+function stopStream(stream: MediaStream | null) {
+  stream?.getTracks().forEach((track) => track.stop());
+}
+
+async function openCamera(video: HTMLVideoElement) {
+  const attempts: MediaStreamConstraints[] = [
+    { audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+    { audio: false, video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } },
+    { audio: false, video: true },
+  ];
+  let last: unknown;
+  for (const constraints of attempts) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = stream;
+      video.muted = true;
+      video.playsInline = true;
+      await video.play();
+      return stream;
+    } catch (error) {
+      if (video.srcObject instanceof MediaStream) stopStream(video.srcObject);
+      video.srcObject = null;
+      last = error;
+    }
+  }
+  throw last;
+}
+
+function grabFrame(canvas: HTMLCanvasElement, video: HTMLVideoElement, mode: number) {
+  const srcW = video.videoWidth;
+  const srcH = video.videoHeight;
+  if (!srcW || !srcH) return null;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  if (mode === 1) {
+    const sw = Math.round(srcW * 0.85);
+    const sh = Math.round(srcH * 0.42);
+    const sx = Math.round((srcW - sw) / 2);
+    const sy = Math.round((srcH - sh) / 2);
+    const scale = Math.min(2.4, 1200 / sw);
+    canvas.width = Math.max(1, Math.round(sw * scale));
+    canvas.height = Math.max(1, Math.round(sh * scale));
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    return canvas;
+  }
+  const scale = Math.min(1, 960 / Math.max(srcW, srcH));
+  const w = Math.max(1, Math.round(srcW * scale));
+  const h = Math.max(1, Math.round(srcH * scale));
+  if (mode === 2) {
+    canvas.width = h;
+    canvas.height = w;
+    ctx.setTransform(0, 1, -1, 0, h, 0);
+    ctx.drawImage(video, 0, 0, w, h);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    return canvas;
+  }
+  canvas.width = w;
+  canvas.height = h;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(video, 0, 0, w, h);
+  return canvas;
+}
 
 function Price({ label, amount, best, higher, card }: { label: string; amount: number | null; best: boolean; higher: boolean; card?: number | null }) {
   const box = amount == null
@@ -38,16 +124,23 @@ function Price({ label, amount, best, higher, card }: { label: string; amount: n
   );
 }
 
-export function Scanner({ products, qtyOf, onAdd, onQty, onClose, kind = "grocery", author = "", reviewsOf, averageOf, onPublish }: Props) {
+export function Scanner({ products, qtyOf, onAdd, onQty, onClose, onFound, kind = "grocery", author = "", reviewsOf, averageOf, onPublish }: Props) {
   const index = useMemo(() => buildBarcodeIndex(products), [products]);
   const indexRef = useRef(index);
   indexRef.current = index;
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const onFoundRef = useRef(onFound);
+  onFoundRef.current = onFound;
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const pausedRef = useRef(false);
   const [cameraError, setCameraError] = useState("");
+  const [torchReady, setTorchReady] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
   const [typed, setTyped] = useState("");
   const [code, setCode] = useState("");
   const [product, setProduct] = useState<Product | null>(null);
   const [missing, setMissing] = useState(false);
+  const [hint, setHint] = useState("");
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -58,66 +151,119 @@ export function Scanner({ products, qtyOf, onAdd, onQty, onClose, kind = "grocer
   }, [onClose]);
 
   useEffect(() => {
-    const scanner = new Html5Qrcode("rayon-scan", {
-      verbose: false,
-      formatsToSupport: [
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.UPC_E,
-        Html5QrcodeSupportedFormats.CODE_128,
-      ],
-      useBarCodeDetectorIfSupported: true,
-    });
-    scannerRef.current = scanner;
+    const video = videoRef.current;
+    if (!video) return;
+    const surface: HTMLVideoElement = video;
     let cancelled = false;
+    const hints = new Map();
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+      BarcodeFormat.EAN_13,
+      BarcodeFormat.EAN_8,
+      BarcodeFormat.UPC_A,
+      BarcodeFormat.UPC_E,
+      BarcodeFormat.CODE_128,
+    ]);
+    hints.set(DecodeHintType.TRY_HARDER, true);
+    const reader = new BrowserMultiFormatOneDReader(hints);
+    const canvas = document.createElement("canvas");
+    const detector = nativeDetector();
+    let turn = 0;
 
-    scanner
-      .start(
-        { facingMode: "environment" },
-        { fps: 8, qrbox: { width: 260, height: 120 }, aspectRatio: 1.6 },
-        (decoded) => {
-          const hit = findByBarcode(indexRef.current, decoded);
-          setCode(decoded.replace(/\D/g, "") || decoded);
-          setProduct(hit);
-          setMissing(!hit);
-          if (scanner.isScanning) scanner.pause(true);
-        },
-        () => undefined,
-      )
+    function accept(raw: string) {
+      if (cancelled || pausedRef.current) return;
+      const hit = findByBarcode(indexRef.current, raw);
+      const clean = raw.replace(/\D/g, "") || raw;
+      setCode(clean);
+      if (!hit) {
+        setHint(clean);
+        return;
+      }
+      pausedRef.current = true;
+      setHint("");
+      setProduct(hit);
+      setMissing(false);
+      onFoundRef.current?.(hit);
+    }
+
+    async function tick() {
+      if (cancelled) return;
+      if (!pausedRef.current && surface.readyState >= 2 && surface.videoWidth > 0) {
+        if (detector) {
+          const found = await within(detector.detect(surface), 400);
+          const value = found?.find((item) => item.rawValue)?.rawValue;
+          if (value) accept(value);
+        }
+        if (!cancelled && !pausedRef.current) {
+          const shot = grabFrame(canvas, surface, turn % 3);
+          turn += 1;
+          if (shot) {
+            try {
+              const text = reader.decodeFromCanvas(shot).getText();
+              if (text) accept(text);
+            } catch {
+              /* cette image ne contient pas de code lisible */
+            }
+          }
+        }
+      }
+      if (!cancelled) window.setTimeout(tick, pausedRef.current ? 300 : 50);
+    }
+
+    openCamera(video)
+      .then((stream) => {
+        if (cancelled) {
+          stopStream(stream);
+          return;
+        }
+        streamRef.current = stream;
+        const track = stream.getVideoTracks()[0];
+        const caps = track?.getCapabilities?.() as { torch?: boolean } | undefined;
+        setTorchReady(Boolean(caps?.torch));
+        tick();
+      })
       .catch(() => {
         if (!cancelled) setCameraError("La caméra n’est pas accessible. Entrez les chiffres sous le code-barres.");
       });
 
     return () => {
       cancelled = true;
-      const done = scanner.isScanning ? scanner.stop() : Promise.resolve();
-      done
-        .catch(() => undefined)
-        .finally(() => {
-          try {
-            scanner.clear();
-          } catch {
-            /* le lecteur est déjà fermé */
-          }
-        });
+      stopStream(streamRef.current);
+      streamRef.current = null;
+      video.srcObject = null;
     };
   }, []);
 
   function show(raw: string) {
     const hit = findByBarcode(indexRef.current, raw);
-    setCode(raw.replace(/\D/g, "") || raw.trim());
+    const clean = raw.replace(/\D/g, "") || raw.trim();
+    setCode(clean);
+    setHint("");
     setProduct(hit);
     setMissing(!hit);
-    if (scannerRef.current?.isScanning) scannerRef.current.pause(true);
+    if (!hit) return;
+    pausedRef.current = true;
+    onFoundRef.current?.(hit);
   }
 
   function again() {
+    pausedRef.current = false;
     setProduct(null);
     setMissing(false);
+    setHint("");
     setCode("");
     setTyped("");
-    if (scannerRef.current?.isScanning) scannerRef.current.resume();
+  }
+
+  async function toggleTorch() {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: next }] } as unknown as MediaTrackConstraints);
+      setTorchOn(next);
+    } catch {
+      setTorchReady(false);
+    }
   }
 
   const qty = product ? qtyOf(product.id) : 0;
@@ -142,7 +288,17 @@ export function Scanner({ products, qtyOf, onAdd, onQty, onClose, kind = "grocer
             : "Pointez l’emballage. Comparo affiche le prix du Maxi et celui de l’IGA."}
         </p>
 
-        <div id="rayon-scan" className="mt-4 overflow-hidden rounded-2xl bg-ink empty:min-h-48" />
+        <div className="relative mt-4 h-72 w-full overflow-hidden rounded-2xl bg-ink">
+          <video ref={videoRef} muted playsInline autoPlay className="h-full w-full object-contain" />
+          <div className="pointer-events-none absolute inset-x-6 top-1/2 h-16 -translate-y-1/2 rounded-xl border-2 border-white/80" />
+          {torchReady && (
+            <button type="button" onClick={toggleTorch} className="absolute bottom-3 right-3 rounded-full bg-paper/90 px-3 py-1.5 text-sm">
+              {torchOn ? "Éteindre" : "Lumière"}
+            </button>
+          )}
+        </div>
+        {!cameraError && !product && <p className="mt-2 text-sm text-muted">Placez le code dans le cadre, à plat, à une quinzaine de centimètres.</p>}
+        {hint && !product && <p className="mt-3 text-sm text-muted">Code lu : {hint}. Il n’est pas dans le relevé, le lecteur continue.</p>}
         {cameraError && <p className="mt-3 rounded-2xl border border-line bg-card px-3 py-2 text-sm">{cameraError}</p>}
 
         <form
@@ -250,8 +406,8 @@ export function Scanner({ products, qtyOf, onAdd, onQty, onClose, kind = "grocer
             <p className="font-medium">Aucun produit pour {code || "ce code"}.</p>
             <p className="mt-1 text-sm text-muted">
               {kind === "saq"
-                ? "Ce code n’est pas dans le relevé des deux SAQ de Baie-Comeau."
-                : "Le code n’est pas dans le catalogue de Baie-Comeau. Les marques maison du Maxi n’ont pas toujours de code-barres relié."}
+                ? "Ce code n’est pas dans le relevé des deux SAQ de Baie-Comeau. Le lecteur continue : tenez le code bien à plat."
+                : "Ce code n’est pas dans le relevé de Baie-Comeau. Le lecteur continue : tenez le code bien à plat."}
             </p>
             <button type="button" onClick={again} className="mt-3 rounded-full border border-line px-4 py-2 text-sm">
               Réessayer

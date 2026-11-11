@@ -1,19 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { changePassword, checkPassword, createAccount, hashPassword, hashPasswordFnv, normalizeHabits, parsePortable, portableOf, readBook, writeBook } from "./account";
+import { changePassword, checkPassword, createAccount, findAccount, hashPassword, hashPasswordFnv, normalizeHabits, parsePortable, portableOf, readBook, writeBook } from "./account";
 import { emptyNotebook } from "./meals";
 import { emptyMemory } from "./memory";
 
+function signup(full: string, password: string, confirm = password) {
+  const [firstName, ...rest] = full.trim().split(/\s+/);
+  const lastName = rest.join(" ") || "Martin";
+  const slug = full.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/\s+/g, ".");
+  return createAccount({ firstName: firstName ?? full, lastName, email: `${slug}@exemple.ca`, password, confirm });
+}
+
 describe("compte", () => {
   it("refuse un mot de passe trop court et une confirmation différente", async () => {
-    expect((await createAccount("Émile", "abc", "abc")).ok).toBe(false);
-    expect((await createAccount("Émile", "abcd", "abce")).ok).toBe(false);
+    expect((await signup("Émile", "abc", "abc")).ok).toBe(false);
+    expect((await signup("Émile", "abcd", "abce")).ok).toBe(false);
   });
 
   it("retient le mot de passe sans le garder en clair", async () => {
-    const created = await createAccount("Emma B", "secret", "secret");
+    const created = await signup("Emma Bouchard", "secret", "secret");
     expect(created.ok).toBe(true);
     if (!created.ok) return;
-    expect(created.account.name).toBe("Emma B");
+    expect(created.account.name).toBe("Emma Bouchard");
     expect(created.account.pass).not.toBe("secret");
     expect(created.account.algo).toBe("sha256");
     expect(created.account.pass).toBe(await hashPassword("secret", created.account.salt));
@@ -55,7 +62,7 @@ describe("compte", () => {
   });
 
   it("transporte le compte avec sa liste, pas le mot de passe en clair", async () => {
-    const created = await createAccount("Léo", "secret", "secret");
+    const created = await signup("Léo", "secret", "secret");
     if (!created.ok) return;
     const file = JSON.stringify(portableOf(created.account, [{ id: "lait", qty: 2 }]));
     expect(file).not.toContain("secret");
@@ -68,12 +75,12 @@ describe("compte", () => {
   });
 
   it("change le mot de passe et garde le prénom", async () => {
-    const created = await createAccount("Léo", "secret", "secret");
+    const created = await signup("Léo", "secret", "secret");
     if (!created.ok) return;
     const changed = await changePassword(created.account, "secret", "autre", "autre");
     expect(changed.ok).toBe(true);
     if (!changed.ok) return;
-    expect(changed.account.name).toBe("Léo");
+    expect(changed.account.name).toBe("Léo Martin");
     expect(await checkPassword(changed.account, "autre")).toBe(true);
     expect(await checkPassword(changed.account, "secret")).toBe(false);
   });
@@ -96,20 +103,27 @@ describe("comptes sur l’appareil", () => {
   });
 
   it("reprend l’ancien verrou unique comme un compte", async () => {
-    const created = await createAccount("Emma", "secret", "secret");
+    const created = await signup("Emma", "secret", "secret");
     if (!created.ok) return;
     mem.set("comparo-compte-v1", JSON.stringify(created.account));
-    expect(readBook().map((item) => item.name)).toEqual(["Emma"]);
+    expect(readBook().map((item) => item.name)).toEqual(["Emma Martin"]);
     expect(mem.has("comparo-compte-v1")).toBe(false);
     expect(readBook()).toHaveLength(1);
   });
 
   it("laisse deux prénoms côte à côte", async () => {
-    const emma = await createAccount("Emma", "secret", "secret");
-    const leo = await createAccount("Léo", "secret", "secret");
+    const emma = await signup("Emma", "secret", "secret");
+    const leo = await signup("Léo", "secret", "secret");
     if (!emma.ok || !leo.ok) return;
     writeBook([emma.account]);
     writeBook([...readBook(), leo.account]);
-    expect(readBook().map((item) => item.name)).toEqual(["Emma", "Léo"]);
+    expect(readBook().map((item) => item.name)).toEqual(["Emma Martin", "Léo Martin"]);
+  });
+
+  it("retrouve un compte par son courriel", async () => {
+    const created = await signup("Emma", "secret");
+    if (!created.ok) return;
+    expect(findAccount([created.account], "Emma@exemple.ca")?.email).toBe("emma@exemple.ca");
+    expect(findAccount([created.account], "autre@exemple.ca")).toBeNull();
   });
 });

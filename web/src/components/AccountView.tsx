@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { portableOf, type StoredAccount } from "../lib/account";
+import { portableOf, accountKey, fullNameOf, type StoredAccount } from "../lib/account";
+import { cloudEnabled } from "../lib/cloud";
 import { readList } from "../lib/useList";
 import type { Mark, UsualStore } from "../lib/memory";
 
@@ -59,7 +60,9 @@ export function AccountView({ account, onStore, onLike, onPass, onOpen, onPasswo
   const repeats = account.memory.repeats.filter((item) => item.count >= 2);
 
   function download() {
-    const payload = portableOf(account, readList(account.name));
+    const key = accountKey(account);
+    const live = readList(key);
+    const payload = portableOf(account, live.length ? live : readList(account.name));
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -103,10 +106,13 @@ export function AccountView({ account, onStore, onLike, onPass, onOpen, onPasswo
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <section>
-        <p className="text-sm text-pine">Compte sur cet appareil</p>
-        <h1 className="mt-1 font-serif text-4xl tracking-tight">{account.name}</h1>
+        <p className="text-sm text-pine">{cloudEnabled ? "Compte Comparo" : "Compte sur cet appareil"}</p>
+        <h1 className="mt-1 font-serif text-4xl tracking-tight">{fullNameOf(account)}</h1>
+        {account.email && <p className="mt-2 text-sm text-muted">{account.email}</p>}
         <p className="mt-3 max-w-2xl text-muted">
-          Comparo retient votre liste, vos repas, le magasin où vous allez et ce que vous aimez. Un fichier emporte ce compte sur un autre appareil. Le mot de passe n’y est pas écrit en clair.
+          {cloudEnabled
+            ? "Comparo garde votre liste, vos repas et ce que vous aimez avec votre compte. Le même courriel les retrouve sur un autre appareil."
+            : "Comparo retient votre liste, vos repas, le magasin où vous allez et ce que vous aimez. Un fichier emporte ce compte sur un autre appareil. Le mot de passe n’y est pas écrit en clair."}
         </p>
       </section>
 

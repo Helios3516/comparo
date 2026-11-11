@@ -256,7 +256,7 @@ export function EssenceView({ embedded = false }: { embedded?: boolean }) {
       {error && <p className="rounded-2xl border border-iga/30 bg-iga/10 px-4 py-3 text-sm">{error}</p>}
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)]">
-        <div className={`fuel-map isolate relative overflow-hidden rounded-3xl border border-line ${embedded ? "h-80" : "h-[28rem] lg:sticky lg:top-24 lg:h-[36rem]"}`}>
+        <div data-tour={embedded ? undefined : "essence"} className={`fuel-map isolate relative overflow-hidden rounded-3xl border border-line ${embedded ? "h-80" : "h-[28rem] lg:sticky lg:top-24 lg:h-[36rem]"}`}>
           <div ref={mapNode} className="h-full w-full" />
           {!snapshot && !error && <div className="absolute inset-0 animate-pulse bg-line/70" />}
         </div>

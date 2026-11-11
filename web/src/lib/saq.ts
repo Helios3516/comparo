@@ -18,9 +18,16 @@ export function toProduct(item: SaqProduct): Product {
     gapPct: 0,
     dealPct: deal,
     exclusive: true,
-    barcodes: item.barcodes,
+    barcodes: codesOf(item),
     saq: item,
   };
+}
+
+function codesOf(item: SaqProduct) {
+  const codes = [...(item.barcodes ?? [])];
+  const sku = item.sku.replace(/\D/g, "");
+  if (sku.length >= 2 && sku.length <= 14 && !codes.includes(sku)) codes.push(sku);
+  return codes;
 }
 
 function discount(product: SaqProduct) {
@@ -40,7 +47,8 @@ export function selectSaq(
     if (options.where === "lasalle" && !product.lasalle) return false;
     if (options.where === "lafleche" && !product.lafleche) return false;
     if (query.length >= 2) {
-      const haystack = `${product.name} ${product.producer} ${product.country} ${product.sku} ${product.category}`;
+      const codes = (product.barcodes ?? []).join(" ");
+      const haystack = `${product.name} ${product.producer} ${product.country} ${product.sku} ${codes} ${product.category}`;
       if (!matchesQuery(haystack, query)) return false;
     }
     return true;

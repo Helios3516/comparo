@@ -2,13 +2,19 @@ import type { Product } from "../types";
 
 export function barcodeKeys(raw: string): string[] {
   const digits = raw.replace(/\D/g, "");
-  if (digits.length < 8 || digits.length > 14) return [];
+  if (digits.length < 2 || digits.length > 14) return [];
+  if (digits.length < 8) return [digits];
   const keys = new Set<string>([digits]);
   const trimmed = digits.replace(/^0+/, "");
-  if (trimmed.length >= 8) keys.add(trimmed);
-  if (digits.length === 12) keys.add(`0${digits}`);
-  if (digits.length === 13 && digits.startsWith("0")) keys.add(digits.slice(1));
-  if (digits.length === 14 && digits.startsWith("0")) keys.add(digits.slice(1));
+  if (trimmed.length >= 8 && trimmed.length <= 14) keys.add(trimmed);
+  if (digits.length >= 12) {
+    for (const body of [digits, trimmed]) {
+      if (body.length < 8 || body.length > 14) continue;
+      for (const size of [12, 13, 14]) {
+        if (body.length <= size) keys.add(body.padStart(size, "0"));
+      }
+    }
+  }
   return [...keys];
 }
 

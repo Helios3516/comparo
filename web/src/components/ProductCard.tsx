@@ -12,6 +12,7 @@ type Props = {
   onPass?: () => void;
   onAdd: () => void;
   onQty: (qty: number) => void;
+  anchor?: string;
 };
 
 function Tile({
@@ -54,14 +55,15 @@ function Tile({
   );
 }
 
-export function ProductCard({ product, qty, index, liked = false, passed = false, onLike, onPass, onAdd, onQty }: Props) {
+export function ProductCard({ product, qty, index, liked = false, passed = false, onLike, onPass, onAdd, onQty, anchor }: Props) {
   const badge = advantage(product);
   const imbattable = !product.exclusive && product.dealPct >= 0.3;
   const fiche = (product.cheaper === "iga" ? product.iga?.url : product.maxi?.url) || product.iga?.url || product.maxi?.url;
 
   return (
     <article
-      className="card-rise flex flex-col overflow-hidden rounded-2xl border border-line bg-card transition duration-300 hover:-translate-y-0.5"
+      data-tour={anchor}
+      className="card-rise flex flex-col rounded-2xl border border-line bg-card transition duration-300 hover:-translate-y-0.5"
       style={{ animationDelay: `${(index % 10) * 20}ms` }}
     >
       <div className="relative h-28 bg-[color-mix(in_srgb,var(--ink)_4%,var(--card))]">
@@ -102,7 +104,7 @@ export function ProductCard({ product, qty, index, liked = false, passed = false
           <Tile label="IGA" price={product.iga} best={product.cheaper === "iga"} higher={product.cheaper === "maxi"} />
         </div>
         <p className="line-clamp-2 text-xs font-medium leading-snug text-pine">{badge}</p>
-        <div className="flex items-center justify-between gap-1">
+        <div className="flex flex-wrap items-center justify-between gap-1">
           {qty > 0 ? (
             <div className="flex items-center gap-0.5 rounded-full border border-line p-0.5">
               <button type="button" aria-label={`Retirer un ${product.name}`} onClick={() => onQty(qty - 1)} className="grid h-10 w-10 place-items-center rounded-full hover:bg-moss">
