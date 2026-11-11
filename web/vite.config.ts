@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { applyReview, type ReviewBook } from "./src/lib/reviews";
+import { handleReviewRequest } from "./src/lib/reviewApi";
+import type { ReviewBook } from "./src/lib/reviews";
 
 const REVIEWS_FILE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "data", "reviews.json");
 
@@ -93,43 +94,23 @@ function reviewsApi(): Plugin {
     }
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
-    if (req.method === "GET") {
-      res.end(JSON.stringify(readReviews()));
-      return;
-    }
-    if (req.method !== "POST") {
-      res.statusCode = 405;
-      res.end(JSON.stringify({ error: "Méthode refusée." }));
-      return;
-    }
     const chunks: Buffer[] = [];
-    await new Promise<void>((resolve, reject) => {
-      req.on("data", (chunk) => chunks.push(chunk));
-      req.on("end", () => resolve());
-      req.on("error", () => reject(new Error("body")));
-    }).catch(() => undefined);
-    let body: { sku?: string; author?: string; stars?: number; text?: string } = {};
-    try {
-      body = JSON.parse(Buffer.concat(chunks).toString("utf8")) as typeof body;
-    } catch {
-      res.statusCode = 400;
-      res.end(JSON.stringify({ error: "Avis illisible." }));
-      return;
+    if (req.method === "POST") {
+      await new Promise<void>((resolve, reject) => {
+        req.on("data", (chunk) => chunks.push(chunk));
+        req.on("end", () => resolve());
+        req.on("error", () => reject(new Error("body")));
+      }).catch(() => undefined);
     }
-    const result = applyReview(readReviews(), {
-      sku: String(body.sku ?? ""),
-      author: String(body.author ?? ""),
-      stars: Number(body.stars),
-      text: String(body.text ?? ""),
+    const result = await handleReviewRequest(req.method, Buffer.concat(chunks).toString("utf8"), {
+      read: readReviews,
+      write: (book) => {
+        mkdirSync(path.dirname(REVIEWS_FILE), { recursive: true });
+        writeFileSync(REVIEWS_FILE, JSON.stringify(book, null, 2));
+      },
     });
-    if (!result.ok) {
-      res.statusCode = 400;
-      res.end(JSON.stringify({ error: result.error }));
-      return;
-    }
-    mkdirSync(path.dirname(REVIEWS_FILE), { recursive: true });
-    writeFileSync(REVIEWS_FILE, JSON.stringify(result.book, null, 2));
-    res.end(JSON.stringify(result.book));
+    res.statusCode = result.status;
+    res.end(JSON.stringify(result.body));
   };
 
   return {
