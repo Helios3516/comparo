@@ -1,4 +1,5 @@
 import type { ListEntry } from "../types";
+import { emptyArchive, normalizeArchive, type Archive } from "./archive";
 import { ALLERGENS, emptyNotebook, normalizeNotebook, type Allergen, type Avoid, type Budget, type Diet, type Habits, type Notebook } from "./meals";
 import { emptyMemory, normalizeMemory, type Memory } from "./memory";
 
@@ -8,13 +9,26 @@ const SESSION_KEY = "comparo-session-v1";
 const LAST_KEY = "comparo-dernier-v1";
 
 export type StoredAccount = {
+  id?: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
   salt: string;
   pass: string;
   algo?: "sha256";
   habits: Habits | null;
   notebook: Notebook;
   memory: Memory;
+  archive?: Archive;
+};
+
+export type AccountDraft = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirm: string;
 };
 
 export type PortableAccount = {
@@ -30,6 +44,36 @@ const ALLERGEN_IDS = new Set<Allergen>(ALLERGENS.map((item) => item.id));
 
 export function sameName(left: string, right: string) {
   return left.localeCompare(right, "fr", { sensitivity: "accent" }) === 0;
+}
+
+export function cleanPerson(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+export function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
+export function emailLooksValid(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(value));
+}
+
+export function accountKey(account: Pick<StoredAccount, "name" | "email"> & { id?: string }) {
+  if (account.id) return account.id;
+  const email = account.email ? normalizeEmail(account.email) : "";
+  return email || account.name;
+}
+
+export function firstNameOf(account: Pick<StoredAccount, "name" | "firstName">) {
+  const first = account.firstName ? cleanPerson(account.firstName) : "";
+  return first || account.name.split(" ")[0] || account.name;
+}
+
+export function fullNameOf(account: Pick<StoredAccount, "name" | "firstName" | "lastName">) {
+  const first = account.firstName ? cleanPerson(account.firstName) : "";
+  const last = account.lastName ? cleanPerson(account.lastName) : "";
+  if (first && last) return `${first} ${last}`;
+  return account.name;
 }
 
 export function hashPasswordFnv(password: string, salt: string) {
@@ -92,14 +136,23 @@ export function normalizeAccount(value: unknown): StoredAccount | null {
   const parsed = value as Partial<StoredAccount>;
   if (typeof parsed.name !== "string" || parsed.name.trim().length < 2) return null;
   if (typeof parsed.salt !== "string" || typeof parsed.pass !== "string" || !parsed.salt || !parsed.pass) return null;
+  const firstName = typeof parsed.firstName === "string" ? cleanPerson(parsed.firstName) : "";
+  const lastName = typeof parsed.lastName === "string" ? cleanPerson(parsed.lastName) : "";
+  const email = typeof parsed.email === "string" && emailLooksValid(parsed.email) ? normalizeEmail(parsed.email) : "";
+  const id = typeof parsed.id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parsed.id) ? parsed.id : "";
   return {
-    name: parsed.name.trim().replace(/\s+/g, " "),
+    ...(id ? { id } : {}),
+    name: cleanPerson(parsed.name),
+    ...(firstName ? { firstName } : {}),
+    ...(lastName ? { lastName } : {}),
+    ...(email ? { email } : {}),
     salt: parsed.salt,
     pass: parsed.pass,
     ...(parsed.algo === "sha256" ? { algo: "sha256" as const } : {}),
     habits: normalizeHabits(parsed.habits),
     notebook: normalizeNotebook(parsed.notebook),
     memory: normalizeMemory(parsed.memory),
+    archive: normalizeArchive(parsed.archive),
   };
 }
 
@@ -137,8 +190,17 @@ export function writeBook(accounts: StoredAccount[]) {
   localStorage.setItem(BOOK_KEY, JSON.stringify(accounts));
 }
 
+export function findAccount(accounts: StoredAccount[], identifier: string) {
+  const typed = identifier.trim();
+  const email = normalizeEmail(typed);
+  return accounts.find((item) => item.email && item.email === email)
+    ?? accounts.find((item) => !item.email && sameName(item.name, typed))
+    ?? null;
+}
+
 export function upsertAccount(accounts: StoredAccount[], account: StoredAccount) {
-  const index = accounts.findIndex((item) => sameName(item.name, account.name));
+  const key = accountKey(account);
+  const index = accounts.findIndex((item) => accountKey(item) === key);
   if (index < 0) return [...accounts, account];
   return accounts.map((item, position) => (position === index ? account : item));
 }
@@ -147,12 +209,12 @@ export function readSession() {
   try {
     const name = localStorage.getItem(SESSION_KEY);
     if (!name) return null;
-    const account = readBook().find((item) => sameName(item.name, name));
+    const account = readBook().find((item) => accountKey(item) === name || sameName(item.name, name));
     if (!account) {
       localStorage.removeItem(SESSION_KEY);
       return null;
     }
-    return account.name;
+    return accountKey(account);
   } catch {
     return null;
   }
@@ -175,26 +237,32 @@ export function readLastName() {
 }
 
 export async function createAccount(
-  name: string,
-  password: string,
-  confirm: string,
+  draft: AccountDraft,
 ): Promise<{ ok: true; account: StoredAccount } | { ok: false; error: string }> {
-  const clean = name.trim().replace(/\s+/g, " ");
-  if (clean.length < 2) return { ok: false, error: "Indiquez un prénom d’au moins 2 lettres." };
-  if (password.length < 4) return { ok: false, error: "Le mot de passe doit avoir au moins 4 caractères." };
-  if (password !== confirm) return { ok: false, error: "Les deux mots de passe ne correspondent pas." };
+  const firstName = cleanPerson(draft.firstName);
+  const lastName = cleanPerson(draft.lastName);
+  const email = normalizeEmail(draft.email);
+  if (lastName.length < 2) return { ok: false, error: "Indiquez un nom d’au moins 2 lettres." };
+  if (firstName.length < 2) return { ok: false, error: "Indiquez un prénom d’au moins 2 lettres." };
+  if (!emailLooksValid(email)) return { ok: false, error: "Indiquez une adresse courriel valide." };
+  if (draft.password.length < 4) return { ok: false, error: "Le mot de passe doit avoir au moins 4 caractères." };
+  if (draft.password !== draft.confirm) return { ok: false, error: "Les deux mots de passe ne correspondent pas." };
   const salt = randomSalt();
-  const pass = await hashPassword(password, salt);
+  const pass = await hashPassword(draft.password, salt);
   return {
     ok: true,
     account: {
-      name: clean,
+      name: `${firstName} ${lastName}`,
+      firstName,
+      lastName,
+      email,
       salt,
       pass,
       algo: pass.length === 64 ? "sha256" : undefined,
       habits: null,
       notebook: emptyNotebook(),
       memory: emptyMemory(),
+      archive: emptyArchive(),
     },
   };
 }

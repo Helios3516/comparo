@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { scheduleListSave } from "./cloud";
 import type { ListEntry } from "../types";
 
 const LEGACY_KEY = "comparo-liste-v1";
@@ -73,6 +74,7 @@ export function useList(owner: string) {
     }
     if (!owner) return;
     localStorage.setItem(listKey(owner), JSON.stringify(items));
+    scheduleListSave(owner, items);
   }, [items, owner]);
 
   const count = items.length;
@@ -104,6 +106,10 @@ export function useList(owner: string) {
     setItems([]);
   }
 
+  function replace(entries: ListEntry[]) {
+    setItems(entries.flatMap((entry) => (entry.id && entry.qty > 0 ? [{ id: entry.id, qty: Math.min(99, Math.round(entry.qty)) }] : [])));
+  }
+
   function addMany(entries: ListEntry[]) {
     setItems((current) => {
       const qty = new Map(current.map((entry) => [entry.id, entry.qty]));
@@ -115,5 +121,5 @@ export function useList(owner: string) {
     });
   }
 
-  return { items, count, qtyOf, add, setQty, remove, clear, addMany };
+  return { items, count, qtyOf, add, setQty, remove, clear, addMany, replace };
 }

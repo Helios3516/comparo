@@ -1,15 +1,16 @@
 import { useEffect, useState, type FormEvent } from "react";
+import type { AccountDraft } from "../lib/account";
+import { cloudEnabled } from "../lib/cloud";
 import type { Product, SaqProduct } from "../types";
 import { PreviewExamples } from "./PreviewExamples";
 
 type Props = {
-  names: string[];
-  lastName: string;
   spotlight: Product | null;
   basket: Product[];
   wine: SaqProduct | null;
-  onCreate: (name: string, password: string, confirm: string) => Promise<string | null> | string | null;
-  onLogin: (name: string, password: string) => Promise<string | null> | string | null;
+  notice?: string | null;
+  onCreate: (draft: AccountDraft) => Promise<string | null> | string | null;
+  onLogin: (email: string, password: string) => Promise<string | null> | string | null;
 };
 
 const GUIDE_KEY = "comparo-guide-v1";
@@ -24,8 +25,12 @@ const STEPS = [
     text: "Une petite liste de courses est déjà séparée : une colonne pour le Maxi de Laflèche, une pour l’IGA de la rue de Bretagne.",
   },
   {
-    title: "Un vin aux deux SAQ",
-    text: "Une bouteille en stock à Laflèche et à Lasalle, avec sa photo. Les accords et le reste du rayon arrivent avec le compte.",
+    title: "Une bouteille, même au restaurant",
+    text: "Le relevé montre le stock à Laflèche et à Lasalle. Avec le compte, le scan lit la bouteille chez un ami ou au restaurant, et vous la retenez pour l’acheter plus tard.",
+  },
+  {
+    title: "La semaine qui prépare la liste",
+    text: "Vous indiquez les convives, les soupers et le budget. Comparo compose les recettes, puis envoie chaque ingrédient au magasin le moins cher.",
   },
   {
     title: "La carte des stations",
@@ -49,16 +54,17 @@ function markGuide() {
   }
 }
 
-export function AccountGate({ names, lastName, spotlight, basket, wine, onCreate, onLogin }: Props) {
-  const known = names.length > 0;
-  const [mode, setMode] = useState<"creer" | "entrer">(known ? "entrer" : "creer");
-  const [chosen, setChosen] = useState(() => (names.includes(lastName) ? lastName : names[0] ?? ""));
-  const [person, setPerson] = useState("");
+export function AccountGate({ spotlight, basket, wine, notice, onCreate, onLogin }: Props) {
+  const [mode, setMode] = useState<"creer" | "entrer">("creer");
+  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [guide, setGuide] = useState(() => !known && !seenGuide());
+  const [guide, setGuide] = useState(() => !seenGuide());
   const [step, setStep] = useState(0);
+  const [sheet, setSheet] = useState(false);
 
   function closeGuide() {
     markGuide();
@@ -81,9 +87,22 @@ export function AccountGate({ names, lastName, spotlight, basket, wine, onCreate
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const message = mode === "creer" ? await onCreate(person, password, confirm) : await onLogin(chosen, password);
+    const message = mode === "creer"
+      ? await onCreate({ lastName, firstName, email, password, confirm })
+      : await onLogin(email, password);
     setError(message);
     if (message) setPassword("");
+  }
+
+  function choose(next: "creer" | "entrer") {
+    setMode(next);
+    setError(null);
+  }
+
+  function openAccount(next: "creer" | "entrer") {
+    choose(next);
+    setSheet(true);
+    window.setTimeout(() => document.getElementById(next === "creer" ? "prenom" : "courriel")?.focus(), 40);
   }
 
   const current = STEPS[step] ?? STEPS[0];
@@ -108,128 +127,128 @@ export function AccountGate({ names, lastName, spotlight, basket, wine, onCreate
             <button type="button" onClick={openGuide} className="rounded-full border border-line bg-card px-3 py-1.5 text-sm">
               Guide
             </button>
-            <a href="#compte" className="rounded-full bg-pine px-3 py-1.5 text-sm font-semibold text-pine-ink">
-              {known && mode === "entrer" ? "Entrer" : "Créer un compte"}
-            </a>
+            <button type="button" onClick={() => choose("entrer")} className={`hidden rounded-full px-3 py-1.5 text-sm lg:inline ${mode === "entrer" ? "bg-pine font-semibold text-pine-ink" : "border border-line bg-card"}`}>
+              Connexion
+            </button>
+            <button type="button" onClick={() => choose("creer")} className={`hidden rounded-full px-3 py-1.5 text-sm lg:inline ${mode === "creer" ? "bg-pine font-semibold text-pine-ink" : "border border-line bg-card"}`}>
+              Inscription
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <section>
-            <p className="text-sm text-pine">Aperçu · quatre exemples réels</p>
-            <h1 className="mt-2 max-w-xl font-serif text-4xl tracking-tight md:text-5xl">Voyez qui est moins cher avant de prendre la voiture.</h1>
-            <p className="mt-4 max-w-xl text-muted">
-              Un gros écart, une liste déjà séparée, un vin aux deux SAQ et la carte des stations. Le compte ouvre ensuite le catalogue, les repas, et se souvient de ce que vous aimez.
+      <main className="mx-auto max-w-6xl px-4 pb-32 pt-3 md:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-8 lg:pb-8 lg:pt-6">
+        <section className="min-w-0">
+          <h1 className="sr-only">Comparo, les prix à Baie-Comeau</h1>
+          <PreviewExamples spotlight={spotlight} basket={basket} wine={wine} />
+        </section>
+
+        <div
+          className={sheet ? "fixed inset-0 z-30 flex items-end bg-ink/40 lg:static lg:inset-auto lg:z-auto lg:block lg:bg-transparent" : "hidden lg:block"}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSheet(false);
+          }}
+        >
+          <form id="compte" onSubmit={submit} className="max-h-[88vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-card p-4 shadow-[var(--shadow)] lg:sticky lg:top-4 lg:max-h-none lg:overflow-visible lg:rounded-3xl lg:p-5" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="mb-2 flex items-center justify-between lg:hidden">
+              <p className="text-sm font-medium">{mode === "creer" ? "Inscription" : "Connexion"}</p>
+              <button type="button" onClick={() => setSheet(false)} className="rounded-full px-3 py-1.5 text-sm text-muted">
+                Fermer
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-1 rounded-full bg-paper p-1">
+              <button type="button" onClick={() => choose("creer")} className={`rounded-full px-3 py-1.5 text-sm ${mode === "creer" ? "bg-card font-semibold shadow-[var(--shadow)]" : "text-muted"}`}>
+                Inscription
+              </button>
+              <button type="button" onClick={() => choose("entrer")} className={`rounded-full px-3 py-1.5 text-sm ${mode === "entrer" ? "bg-card font-semibold shadow-[var(--shadow)]" : "text-muted"}`}>
+                Connexion
+              </button>
+            </div>
+            <h2 className="mt-3 font-serif text-2xl tracking-tight">{mode === "creer" ? "Créer un compte" : "Bon retour"}</h2>
+            <p className="mt-1 text-sm leading-snug text-muted">
+              {mode === "creer"
+                ? cloudEnabled
+                  ? "Le compte est gardé en ligne. Le même courriel retrouve vos listes sur un autre appareil."
+                  : "Ces informations restent sur cet appareil. La connexion retrouve ensuite vos listes."
+                : cloudEnabled
+                  ? "Courriel et mot de passe du compte Comparo."
+                  : "Courriel et mot de passe. Un ancien compte peut encore entrer avec son prénom."}
             </p>
-            <div className="mt-8">
-              <PreviewExamples spotlight={spotlight} basket={basket} wine={wine} />
-            </div>
-          </section>
 
-          <form id="compte" onSubmit={submit} className="rounded-3xl border border-line bg-card p-6 shadow-[var(--shadow)] lg:sticky lg:top-6 md:p-8">
-          <h2 className="font-serif text-3xl tracking-tight">{mode === "creer" ? "Créer un compte" : `Bonjour ${chosen}`}</h2>
-          <p className="mt-3 text-sm leading-relaxed text-muted">
-            {mode === "creer"
-              ? "Chaque prénom a sa liste, ses repas et ses goûts. Le compte reste dans ce navigateur. Un fichier peut l’emporter sur un autre appareil."
-              : "Entrez le mot de passe pour retrouver les prix, la liste, les repas et ce que vous aimez."}
-          </p>
+            {mode === "creer" && (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <label className="block text-sm" htmlFor="nom">
+                  Nom
+                  <input id="nom" required autoComplete="family-name" value={lastName} onChange={(event) => setLastName(event.target.value)} className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2" />
+                </label>
+                <label className="block text-sm" htmlFor="prenom">
+                  Prénom
+                  <input id="prenom" required autoComplete="given-name" value={firstName} onChange={(event) => setFirstName(event.target.value)} className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2" />
+                </label>
+              </div>
+            )}
 
-          {mode === "entrer" && names.length > 1 && (
-            <div className="mt-5 flex flex-wrap gap-2">
-              {names.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  aria-pressed={item === chosen}
-                  onClick={() => {
-                    setChosen(item);
-                    setError(null);
-                  }}
-                  className={`rounded-full border px-3 py-1.5 text-sm ${item === chosen ? "border-pine bg-moss" : "border-line"}`}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {mode === "creer" && (
-            <label className="mt-6 block text-sm" htmlFor="prenom">
-              Prénom
+            <label className="mt-3 block text-sm" htmlFor="courriel">
+              {mode === "creer" ? "Adresse courriel" : "Courriel ou prénom"}
               <input
-                id="prenom"
+                id="courriel"
                 required
-                autoComplete="nickname"
-                value={person}
-                onChange={(event) => setPerson(event.target.value)}
-                className="mt-1 w-full rounded-2xl border border-line bg-paper px-3 py-3"
+                type={mode === "creer" ? "email" : "text"}
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2"
               />
             </label>
-          )}
 
-          <label className="mt-4 block text-sm" htmlFor="motdepasse">
-            Mot de passe
-            <input
-              id="motdepasse"
-              required
-              type="password"
-              autoComplete={mode === "creer" ? "new-password" : "current-password"}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="mt-1 w-full rounded-2xl border border-line bg-paper px-3 py-3"
-            />
-          </label>
-
-          {mode === "creer" && (
-            <label className="mt-4 block text-sm" htmlFor="confirmer">
-              Confirmer le mot de passe
+            <label className="mt-3 block text-sm" htmlFor="motdepasse">
+              Mot de passe
               <input
-                id="confirmer"
+                id="motdepasse"
                 required
                 type="password"
-                autoComplete="new-password"
-                value={confirm}
-                onChange={(event) => setConfirm(event.target.value)}
-                className="mt-1 w-full rounded-2xl border border-line bg-paper px-3 py-3"
+                autoComplete={mode === "creer" ? "new-password" : "current-password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2"
               />
             </label>
-          )}
 
-          {error && <p className="mt-4 rounded-2xl border border-iga/30 bg-iga/10 px-3 py-2 text-sm">{error}</p>}
+            {mode === "creer" && (
+              <label className="mt-3 block text-sm" htmlFor="confirmer">
+                Confirmer le mot de passe
+                <input
+                  id="confirmer"
+                  required
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirm}
+                  onChange={(event) => setConfirm(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2"
+                />
+              </label>
+            )}
 
-          <button type="submit" className="mt-6 w-full rounded-full bg-pine px-5 py-3 text-sm font-semibold text-pine-ink">
-            {mode === "creer" ? "Créer le compte" : "Entrer"}
-          </button>
+            {notice && <p className="mt-3 rounded-xl border border-iga/30 bg-iga/10 px-3 py-2 text-sm">{notice}</p>}
+            {error && <p className="mt-3 rounded-xl border border-iga/30 bg-iga/10 px-3 py-2 text-sm">{error}</p>}
 
-          {known && mode === "entrer" && (
-            <button
-              type="button"
-              onClick={() => {
-                setMode("creer");
-                setError(null);
-              }}
-              className="mt-3 w-full text-sm text-muted underline-offset-2 hover:underline"
-            >
-              Une autre personne
+            <button type="submit" className="mt-4 w-full rounded-full bg-pine px-5 py-2.5 text-sm font-semibold text-pine-ink">
+              {mode === "creer" ? "Créer le compte" : "Se connecter"}
             </button>
-          )}
-          {mode === "creer" && known && (
-            <button
-              type="button"
-              onClick={() => {
-                setMode("entrer");
-                setError(null);
-              }}
-              className="mt-3 w-full text-sm text-muted underline-offset-2 hover:underline"
-            >
-              J’ai déjà un compte ici
-            </button>
-          )}
-        </form>
+          </form>
         </div>
       </main>
+
+      <div className={`fixed inset-x-0 bottom-0 z-20 border-t border-line bg-paper/95 p-3 backdrop-blur lg:hidden ${sheet ? "hidden" : ""}`}>
+        <div className="mx-auto grid max-w-lg grid-cols-2 gap-2">
+          <button type="button" onClick={() => openAccount("entrer")} className="rounded-full border border-line bg-card px-4 py-3 text-sm font-medium">
+            Connexion
+          </button>
+          <button type="button" onClick={() => openAccount("creer")} className="rounded-full bg-pine px-4 py-3 text-sm font-semibold text-pine-ink">
+            Inscription
+          </button>
+        </div>
+      </div>
 
       {guide && current && (
         <div className="fixed inset-0 z-40 grid place-items-center bg-ink/40 px-4" role="presentation" onMouseDown={closeGuide}>
@@ -265,7 +284,7 @@ export function AccountGate({ names, lastName, spotlight, basket, wine, onCreate
                   type="button"
                   onClick={() => {
                     closeGuide();
-                    document.getElementById("prenom")?.focus();
+                    openAccount("creer");
                   }}
                   className="rounded-full bg-pine px-5 py-2.5 text-sm font-semibold text-pine-ink"
                 >

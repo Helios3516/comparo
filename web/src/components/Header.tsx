@@ -3,6 +3,8 @@ import type { SearchRecord } from "../lib/search";
 import type { Product, View } from "../types";
 import type { ThemeMode } from "../lib/useTheme";
 import { SearchBox } from "./SearchBox";
+import { AccountMenu } from "./AccountMenu";
+import type { Archive, ArchivedList } from "../lib/archive";
 
 type Props = {
   view: View;
@@ -19,8 +21,13 @@ type Props = {
   onScan: () => void;
   placeholder?: string;
   accountName: string;
+  fullName: string;
+  email: string;
+  archive: Archive;
   onAccount: () => void;
   onLogout: () => void;
+  onResume: (list: ArchivedList) => void;
+  onOpenScan: (id: string, name: string) => void;
 };
 
 const NAV: { id: View; label: string }[] = [
@@ -114,13 +121,17 @@ export function Header(props: Props) {
             <span className="hidden lg:inline">{THEME_SHORT[props.mode]}</span>
           </button>
 
-          <div className="col-span-3 flex h-10 w-fit max-w-full items-center rounded-full border border-line bg-card text-sm md:order-6 md:col-auto">
-            <button type="button" onClick={props.onAccount} className="max-w-28 truncate px-3 py-2" aria-label={`Ouvrir le compte de ${props.accountName}`}>
-              {props.accountName}
-            </button>
-            <button type="button" onClick={props.onLogout} aria-label={`Sortir du compte de ${props.accountName}`} className="border-l border-line px-3 py-2 text-muted">
-              Sortir
-            </button>
+          <div className="col-span-3 flex justify-end md:order-6 md:col-auto">
+            <AccountMenu
+              firstName={props.accountName}
+              fullName={props.fullName}
+              email={props.email}
+              archive={props.archive}
+              onAccount={props.onAccount}
+              onLogout={props.onLogout}
+              onResume={props.onResume}
+              onScan={props.onOpenScan}
+            />
           </div>
 
           <div className="col-span-3 min-w-0 md:order-2 md:col-auto md:min-w-[12rem] md:flex-1">

@@ -96,7 +96,7 @@ export function ListView({ summary, onQty, onClear, onBrowse, onDeals, onPdf }: 
 
   if (summary.count === 0) {
     return (
-      <div className="rounded-[2rem] border border-dashed border-line px-6 py-20 text-center">
+      <div data-tour="liste" className="rounded-[2rem] border border-dashed border-line px-6 py-20 text-center">
         <p className="font-serif text-4xl">Votre liste est vide</p>
         <p className="mx-auto mt-3 max-w-md text-muted">
           Ajoutez ce qu’il vous faut cette semaine. Comparo répartit chaque article au magasin le moins cher.
@@ -124,7 +124,7 @@ export function ListView({ summary, onQty, onClear, onBrowse, onDeals, onPdf }: 
 
   return (
     <div className="space-y-6">
-      <div className={`grid gap-3 ${summary.saqLines.length ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
+      <div data-tour="liste" className={`grid gap-3 ${summary.saqLines.length ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
         <Bill kicker="Arrêt unique" title="100 % Maxi" amount={summary.maxiTotal} note={maxiNote} />
         <Bill kicker="Arrêt unique" title="100 % IGA" amount={summary.igaTotal} note={igaNote} />
         <Bill

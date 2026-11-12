@@ -195,6 +195,71 @@ button {
   border-bottom-color: var(--line);
 }
 
+.driver-popover.comparo-visite {
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background-color: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  max-width: 22rem;
+  padding: 1.1rem 1.15rem 1rem;
+  box-shadow: var(--shadow);
+}
+
+.driver-popover.comparo-visite .driver-popover-title {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 500;
+  line-height: 1.2;
+  padding-right: 1.6rem;
+}
+
+.driver-popover.comparo-visite .driver-popover-description,
+.driver-popover.comparo-visite .driver-popover-progress-text,
+.driver-popover.comparo-visite .driver-popover-close-btn {
+  color: var(--muted);
+}
+
+.driver-popover.comparo-visite .driver-popover-description {
+  font-size: 0.95rem;
+}
+
+.driver-popover.comparo-visite .driver-popover-close-btn:hover,
+.driver-popover.comparo-visite .driver-popover-close-btn:focus-visible {
+  color: var(--ink);
+}
+
+.driver-popover.comparo-visite .driver-popover-footer-btn {
+  border-radius: 999px;
+  border-color: var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0.45rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+.driver-popover.comparo-visite .driver-popover-next-btn {
+  background: var(--pine);
+  color: var(--pine-ink);
+  border-color: transparent;
+}
+
+.driver-popover.comparo-visite .driver-popover-arrow-side-left {
+  border-left-color: var(--card);
+}
+
+.driver-popover.comparo-visite .driver-popover-arrow-side-right {
+  border-right-color: var(--card);
+}
+
+.driver-popover.comparo-visite .driver-popover-arrow-side-top {
+  border-top-color: var(--card);
+}
+
+.driver-popover.comparo-visite .driver-popover-arrow-side-bottom {
+  border-bottom-color: var(--card);
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -213,7 +278,9 @@ button {
   body {
     background: white !important;
   }
-  .no-print {
+  .no-print,
+  .driver-layer,
+  .driver-popover {
     display: none !important;
   }
   .sheet-scale {

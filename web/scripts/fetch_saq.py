@@ -233,7 +233,7 @@ def barcodes_from(value, sku: str) -> list[str]:
         if len(digits) >= 8:
             found.append(digits)
     sku_digits = re.sub(r"\D", "", sku)
-    if len(sku_digits) >= 8:
+    if 2 <= len(sku_digits) <= 14:
         found.append(sku_digits)
     unique: list[str] = []
     for code in found:

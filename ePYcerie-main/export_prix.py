@@ -34,6 +34,8 @@ def main():
     print("Maxi...")
     maxi = Maxi.all()
     print("Maxi", len(maxi))
+    if len(iga) < 50 or len(maxi) < 50:
+        raise SystemExit(f"relevé trop court (IGA {len(iga)}, Maxi {len(maxi)}), fichier conservé")
     with pd.ExcelWriter(destination, engine="openpyxl") as writer:
         pd.DataFrame(iga, columns=COLUMNS).to_excel(writer, sheet_name="IGA", index=False)
         pd.DataFrame(maxi, columns=COLUMNS).to_excel(writer, sheet_name="Maxi", index=False)

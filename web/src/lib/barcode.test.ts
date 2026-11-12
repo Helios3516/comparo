@@ -26,8 +26,24 @@ describe("barcodeKeys", () => {
     expect(barcodeKeys("0067000104862")).toEqual(expect.arrayContaining(["067000104862"]));
   });
 
-  it("ignore un code trop court", () => {
-    expect(barcodeKeys("4011")).toEqual([]);
+  it("relie le CUP SAQ de 14 chiffres au code lu sur la bouteille", () => {
+    expect(barcodeKeys("08421950966161")).toEqual(expect.arrayContaining(["08421950966161", "8421950966161"]));
+    const wine = product({ id: "vin", exclusive: true, barcodes: ["08421950966161", "15460261"] });
+    const index = buildBarcodeIndex([wine]);
+    expect(findByBarcode(index, "8421950966161")?.id).toBe("vin");
+    expect(findByBarcode(index, "15460261")?.id).toBe("vin");
+  });
+
+  it("retrouve une bouteille par son code SAQ de six chiffres", () => {
+    const wine = product({ id: "110056", exclusive: true, barcodes: ["00087000001725", "110056"] });
+    const index = buildBarcodeIndex([wine]);
+    expect(findByBarcode(index, "110056")?.id).toBe("110056");
+    expect(findByBarcode(index, "00087000001725")?.id).toBe("110056");
+  });
+
+  it("garde un code SAQ court sans le rallonger", () => {
+    expect(barcodeKeys("110056")).toEqual(["110056"]);
+    expect(barcodeKeys("4011")).toEqual(["4011"]);
   });
 });
 

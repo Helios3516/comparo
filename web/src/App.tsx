@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { AccountGate } from "./components/AccountGate";
 import { AccountView } from "./components/AccountView";
 import { EssenceView } from "./components/EssenceView";
@@ -11,6 +11,7 @@ import { ProductGrid } from "./components/ProductGrid";
 import { Roadmap } from "./components/Roadmap";
 import { SaqView } from "./components/SaqView";
 import { Scanner } from "./components/Scanner";
+import { Visit } from "./components/Visit";
 import { categoryChips, selectProducts, subcategoryChips } from "./lib/browse";
 import { longDate, money } from "./lib/format";
 import { forYou, type Mark } from "./lib/memory";
@@ -18,6 +19,8 @@ import { summarize } from "./lib/pricing";
 import { toProduct } from "./lib/saq";
 import { buildSearchIndex } from "./lib/search";
 import { useAccount } from "./lib/useAccount";
+import { accountKey, firstNameOf, fullNameOf } from "./lib/account";
+import { emptyArchive } from "./lib/archive";
 import { useBrowse } from "./lib/useBrowse";
 import { useCatalog } from "./lib/useCatalog";
 import { useList } from "./lib/useList";
@@ -25,6 +28,7 @@ import { usePreview } from "./lib/usePreview";
 import { useReviews } from "./lib/useReviews";
 import { useSaq } from "./lib/useSaq";
 import { useTheme } from "./lib/useTheme";
+import { visitPending } from "./lib/visit";
 import type { Product, SaqProduct, SaqStoreFilter, SortKey, StoreFilter, View } from "./types";
 
 const PAGE_SIZE = 24;
@@ -37,11 +41,12 @@ export default function App() {
   const [roadmap, setRoadmap] = useState(false);
   const [scan, setScan] = useState(false);
   const [profile, setProfile] = useState(false);
-  const needsCatalog = account.ready && view !== "saq" && (view !== "essence" || scan);
-  const needsSaq = account.ready && (view === "saq" || view === "repas" || view === "liste");
+  const showTour = account.account ? visitPending(accountKey(account.account)) : false;
+  const needsCatalog = showTour || (account.ready && view !== "saq" && (view !== "essence" || scan));
+  const needsSaq = account.ready && (view === "saq" || view === "repas" || view === "liste" || scan);
   const { catalog, error } = useCatalog(needsCatalog);
   const saq = useSaq(needsSaq);
-  const list = useList(account.account?.name ?? "");
+  const list = useList(account.account ? accountKey(account.account) : "");
   const reviews = useReviews(account.ready && Boolean(account.account));
   const preview = usePreview(!account.ready);
 
@@ -57,6 +62,12 @@ export default function App() {
   const summary = useMemo(() => summarize(list.items, byId), [list.items, byId]);
   const index = useMemo(() => buildSearchIndex(products), [products]);
   const saqIndex = useMemo(() => buildSearchIndex((saq.catalog?.products ?? []).map(toProduct)), [saq.catalog]);
+  const scanProducts = useMemo(() => {
+    const wines = (saq.catalog?.products ?? []).map(toProduct);
+    if (view === "saq") return wines;
+    const seen = new Set(products.map((item) => item.id));
+    return [...products, ...wines.filter((item) => !seen.has(item.id))];
+  }, [view, products, saq.catalog]);
   const deferredQuery = useDeferredValue(query);
 
   const comparables = useMemo(() => products.filter((product) => !product.exclusive), [products]);
@@ -72,6 +83,18 @@ export default function App() {
     [comparables],
   );
   const updated = catalog ? longDate(catalog.generatedAt) : "";
+
+  const archivedLines = useMemo(
+    () => [...summary.maxiLines, ...summary.igaLines, ...summary.saqLines].map((line) => ({ id: line.id, name: line.name, qty: line.qty })),
+    [summary],
+  );
+  const accountRef = useRef(account);
+  accountRef.current = account;
+  useEffect(() => {
+    if (!accountRef.current.account || archivedLines.length === 0) return;
+    accountRef.current.noteList(archivedLines, summary.optimized, summary.saved);
+    accountRef.current.noteSaving(summary.saved);
+  }, [archivedLines, summary.optimized, summary.saved]);
 
   useEffect(() => {
     if (page === 0) return;
@@ -99,6 +122,19 @@ export default function App() {
       {
         both: !both,
         ...(!both && exclusive ? { store: "comparables" as const } : {}),
+      },
+      "replace",
+    );
+  }
+
+  function showForTour(next: View) {
+    setProfile(false);
+    patch(
+      {
+        view: next,
+        query: "",
+        ...(next === "catalogue" ? { category: "all", subcategory: "all", store: "comparables" as const, sort: "alpha" as const, both: true } : {}),
+        ...(next === "accueil" ? { both: false } : {}),
       },
       "replace",
     );
@@ -181,14 +217,17 @@ export default function App() {
     );
   }
 
+  if (account.booting) {
+    return <div className="grid min-h-screen place-items-center text-sm text-muted">Ouverture du compte…</div>;
+  }
+
   if (!account.ready || !account.account) {
     return (
       <AccountGate
-        names={account.names}
-        lastName={account.lastName}
         spotlight={preview.spotlight}
         basket={preview.basket}
         wine={preview.wine}
+        notice={account.notice}
         onCreate={account.register}
         onLogin={account.login}
       />
@@ -215,11 +254,22 @@ export default function App() {
           onPick={pick}
           onScan={() => setScan(true)}
           placeholder={view === "saq" ? "Vin, whisky, code SAQ…" : undefined}
-          accountName={account.account.name}
+          accountName={firstNameOf(account.account)}
+          fullName={fullNameOf(account.account)}
+          email={account.account.email ?? ""}
+          archive={account.account.archive ?? emptyArchive()}
           onAccount={() => setProfile(true)}
           onLogout={() => {
             setProfile(false);
             account.logout();
+          }}
+          onResume={(saved) => {
+            list.replace(saved.lines.map((line) => ({ id: line.id, qty: line.qty })));
+            openView("liste");
+          }}
+          onOpenScan={(_id, name) => {
+            setProfile(false);
+            patch({ query: name, category: "all", subcategory: "all", view: "catalogue", sort: "alpha" }, "push");
           }}
         />
         <main id="contenu" className="mx-auto max-w-[90rem] px-4 py-6 md:px-6 md:py-8">
@@ -369,7 +419,7 @@ export default function App() {
               passed={(id) => account.account?.memory.passes.some((item) => item.id === id) ?? false}
               onLike={likeSaq}
               onPass={passSaq}
-              author={account.account.name}
+              author={firstNameOf(account.account)}
               reviewsOf={(sku) => reviews.book[sku] ?? []}
               averageOf={reviews.averageOf}
               onPublish={reviews.publish}
@@ -405,16 +455,24 @@ export default function App() {
           )}
         </main>
       </div>
+      {account.account && showTour && (
+        <Visit
+          name={accountKey(account.account)}
+          ready={Boolean(catalog) && !profile && !roadmap && !scan}
+          onView={showForTour}
+        />
+      )}
       {roadmap && <Roadmap summary={summary} onClose={() => setRoadmap(false)} />}
-      {scan && (view === "saq" ? (saq.catalog?.products.length ?? 0) > 0 : catalog) && (
+      {scan && (
         <Scanner
           kind={view === "saq" ? "saq" : "grocery"}
-          products={view === "saq" ? (saq.catalog?.products ?? []).map(toProduct) : products}
+          products={scanProducts}
           qtyOf={list.qtyOf}
           onAdd={rememberAdd}
           onQty={list.setQty}
           onClose={() => setScan(false)}
-          author={account.account?.name ?? ""}
+          author={account.account ? firstNameOf(account.account) : ""}
+          onFound={(product) => account.noteScan(product.id, product.name)}
           reviewsOf={(sku) => reviews.book[sku] ?? []}
           averageOf={reviews.averageOf}
           onPublish={reviews.publish}
